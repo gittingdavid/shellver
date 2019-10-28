@@ -2,45 +2,44 @@ package main
 
 import (
 	"fmt"
-	"io"
+	"html/template"
+	"log"
 	"net/http"
+	"strings"
 )
 
+func sayhelloName(w http.ResponseWriter, r *http.Request) {
+	r.ParseForm() //Parse url parameters passed, then parse the response packet for the POST body (request body)
+	// attention: If you do not call ParseForm method, the following data can not be obtained form
+	fmt.Println(r.Form) // print information on server side.
+	fmt.Println("path", r.URL.Path)
+	fmt.Println("scheme", r.URL.Scheme)
+	fmt.Println(r.Form["url_long"])
+	for k, v := range r.Form {
+		fmt.Println("key:", k)
+		fmt.Println("val:", strings.Join(v, ""))
+	}
+	fmt.Fprintf(w, "Hello astaxie!") // write data to response
+}
+
+func login(w http.ResponseWriter, r *http.Request) {
+	fmt.Println("method:", r.Method) //get request method
+	if r.Method == "GET" {
+		t, _ := template.ParseFiles("login.gtpl")
+		t.Execute(w, nil)
+	} else {
+		r.ParseForm()
+		// logic part of log in
+		fmt.Println("username:", r.Form["username"])
+		fmt.Println("password:", r.Form["password"])
+	}
+}
+
 func main() {
-	http.Handle("/", http.FileServer(http.Dir(".")))
-	http.HandleFunc("/hello", hello)
-	http.HandleFunc("/hellohtml", hellohtml)
-	http.ListenAndServe(":9000", nil)
-	// Use browser and go to "localhost:9000
-
-}
-
-func hello(response http.ResponseWriter, request *http.Request) {
-	fmt.Println(request.URL.Path[1:])
-	output := []byte("Hello There!")
-	fmt.Println("Someone says hello!")
-	response.Write(output)
-	//Use browser and go to "localhost:9000/hello"
-}
-
-func hellohtml(response http.ResponseWriter, request *http.Request) {
-	response.Header().Set("Content-Type", "text/html")
-
-	/*
-		output := []byte("<html><body><h1>Hello There!</h1></body></html>")
-		response.Write(output)
-	*/
-
-	io.WriteString(response, `
-	<DOCTYPE html>
-	<html>
-	<head>
-		<title> My Page </title>
-	</head>
-	<body>
-		<h2> Welcome to my page </h2>
-		<p> This is a test of a go server <p>
-	</body>
-	</html>
-	`)
+	http.HandleFunc("/", sayhelloName) // setting router rule
+	http.HandleFunc("/login", login)
+	err := http.ListenAndServe(":9090", nil) // setting listening port
+	if err != nil {
+		log.Fatal("ListenAndServe: ", err)
+	}
 }
